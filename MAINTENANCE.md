@@ -1,56 +1,37 @@
 # Lichtblick 维护边界
 
-本文档是 XGC2 集成 Lichtblick 的强制维护规约。目标是让 Lichtblick 保持可替换的
-官方上游制品，避免 XGC2 再次形成长期源码分叉。
+本文档是 XGC2 集成 Lichtblick 的强制维护规约。目标是确保 APT 只发布我们实际维护和
+使用的 Lichtblick 源码，同时保持源码、打包、CI 和签名仓库职责分离。
 
-## 唯一维护入口
+## 唯一发布链
 
-- `lichtblick-packaging` 是 XGC2 唯一维护的 Lichtblick 仓库边界。
-- 构建只能从 `lichtblick.lock` 指定的官方
-  `https://github.com/lichtblick-suite/lichtblick.git` tag 和 commit SHA 获取源码。
-- `external/dev/xgc2-lichtblick` 只用于阅读、调试和核对官方接口；它必须指向官方
-  仓库并保持无本地修改。它不是构建输入，也不是产品源码。
-- 禁止恢复 `products/webui/xgc2-lichtblick`，禁止把 remote 改成 XGC2 fork。
+- `lxk36/xgc2-lichtblick` 的 `xgc2` 分支是唯一允许的产品源码输入；
+- `xgc2-lichtblick-packaging` 是唯一 Lichtblick Debian 打包与发布入口；
+- `lichtblick.lock` 必须同时固定维护仓库、`xgc2` 分支和精确 commit SHA；
+- `xgc2-devops` 只登记 packaging 产品，源码仓不得重复声明同名产品；
+- APT 签名和索引发布仍由中央发布器执行。
+
+禁止直接从 `lichtblick-suite/lichtblick` 的 tag、其他 fork、工作区未提交内容或临时
+构建目录生成正式包。
 
 ## Packaging 可以负责什么
 
-- 固定并校验上游版本、Node/Yarn/FPM 等构建输入；
-- 构建 Web/Electron Debian 包及执行安装、启动和卸载验证；
-- 提供通用静态文件服务器、WebSocket 反向代理、来源/CSP 限制、健康检查和版本信息；
-- 维护包元数据、CI、发布和升级工作流。
+- 校验维护分支和不可变 SHA；
+- 固定 Node、Yarn、FPM 等构建输入；
+- 从同一源码构建 `xgc2-lichtblick-web` 和可选的 `xgc2-lichtblick` 桌面包；
+- 执行六个平台组合的安装、启动和卸载验证；
+- 维护包元数据、CI、发布和源码锁新鲜度检查。
 
-Packaging 不得携带 XGC2 默认布局、机器人、网格、坐标轴、相机视角或 TF 跟踪策略，
-也不得通过源码补丁、patch queue、构建时改写、运行时 monkey patch 或访问
-Lichtblick 内部状态来实现这些功能。
-
-## XGC2 domain 负责什么
-
-- 工作流节点读取面板参数并生成每次 Run 使用的 Lichtblick JSON 布局；
-- 业务侧组合基础面板、网格、坐标轴、机器人和可扩展场景；
-- 通过 Lichtblick 官方公开的 URL、布局导入或扩展接口把配置交给 Web 节点；
-- 在 XGC2 Lite/domain 中持久化业务配置和用户选择。
-
-固定相机参数与 TF 跟踪策略属于互斥的业务状态。若官方公开接口允许导出当前视图，
-XGC2 可以按节流策略持久化，并且只在下一次启动时恢复一次；恢复完成后不得持续抢占
-用户的交互控制权。
-
-## 官方接口不足时
-
-需要的能力若无法通过当前官方公开接口实现，应先核对官方文档和版本行为，然后选择：
-
-1. 向 Lichtblick 官方提交通用能力并等待发布；
-2. 在 XGC2 中将能力标记为暂不支持。
-
-不得以修改 `external/dev` 源码、重新建立 XGC2 源码 fork 或向打包服务器注入内部状态
-访问代码作为替代方案。尤其是视角/TF 策略的自动采集，在没有稳定官方导出接口前应视为
-未完成能力，而不是依赖私有实现。
+Packaging 不得在构建时偷偷注入未提交补丁，也不得从其他产品仓库拼装 Lichtblick
+制品。
 
 ## 升级检查
 
-升级 Lichtblick 时必须：
+维护分支前进后必须：
 
-1. 只更新 `lichtblick.lock` 中的官方 tag 和精确 SHA；
-2. 确认 `external/dev/xgc2-lichtblick`（如用于核对）与该官方版本一致且无本地 diff；
-3. 核对 XGC2 使用的布局 JSON 和公开接口契约；
-4. 运行 packaging 合规检查、Web 测试和全部相关包构建；
-5. 拒绝任何包含 Lichtblick 源码补丁、内部状态注入或 XGC2 默认布局的变更。
+1. 审阅 `xgc2` 分支的新 commit，并确认其为实际使用的源码；
+2. 更新 `lichtblick.lock` 的精确 SHA；
+3. 在 `.xgc2/product.yml` 增加 Debian revision 和全部发行版版本；
+4. 运行 packaging 合规检查、Web 测试和 GitHub CI 六平台包验证；
+5. 仅在上述检查通过后，通过中央发布器更新 Lichtblick 的 APT 坐标；
+6. 审计 APT 索引、签名及六个平台的新版本，不顺带发布其他产品。

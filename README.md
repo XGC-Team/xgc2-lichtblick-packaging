@@ -10,24 +10,23 @@ and arm64.
 
 This repository owns:
 
-- `lichtblick.lock`, including the upstream repository, tag, commit SHA, and
+- `lichtblick.lock`, including the maintained repository, branch, commit SHA, and
   exact Node, Yarn, and native FPM toolchain inputs;
 - the repeatable Web and Electron Debian builds, deterministic repackaging, and
   installed-package smoke tests;
 - XGC2 package metadata and CI/release workflows;
 - promotion of validated packages to the XGC2 APT repository.
 
-It intentionally does not commit a copy of the Lichtblick source tree, develop
-XGC2-specific Lichtblick features, hold the APT signing key, or operate the APT
-server. It builds directly from the official
-[`lichtblick-suite/lichtblick`](https://github.com/lichtblick-suite/lichtblick)
-repository. Repository signing and index publication remain server-side
-operations. The mandatory ownership and upgrade rules are documented in
+It intentionally does not commit a copy of the Lichtblick source tree, hold the
+APT signing key, or operate the APT server. It builds only from the XGC2-maintained
+[`lxk36/xgc2-lichtblick`](https://github.com/lxk36/xgc2-lichtblick) repository.
+Repository signing and index publication remain server-side operations. The
+mandatory ownership and upgrade rules are documented in
 [`MAINTENANCE.md`](MAINTENANCE.md).
 
-The current product release pins official `v1.27.0` by both tag and commit SHA.
-A tag is never accepted on its own: every build verifies that the official tag
-still matches the SHA recorded in `lichtblick.lock`.
+The current product release pins the maintained `xgc2` branch by commit SHA.
+Every build first verifies that the branch head still matches the immutable SHA
+recorded in `lichtblick.lock`.
 
 ## Package matrix
 
@@ -190,13 +189,8 @@ using the release-scoped staging APT overlay, and uploads only trusted
 validates and promotes those artifacts; this repository has no production APT
 credentials and cannot write the repository.
 
-`update-lichtblick.yml` checks the official repository for the highest stable
-semantic version tag. When a newer tag exists, it opens or refreshes a pull
-request that updates `lichtblick.lock`, the product version, and all
-distribution versions.
-It never auto-merges: the full package matrix must pass before a maintainer
-accepts the source upgrade. Because branches and pull requests created by the
-repository `GITHUB_TOKEN` do not start ordinary push CI, the updater explicitly
-dispatches `ci.yml` on the update branch. Repository Actions settings must allow
-`GITHUB_TOKEN` to create pull requests; the workflow never approves or merges
-them.
+`update-lichtblick.yml` is a scheduled freshness guard. It compares the
+immutable source SHA in `lichtblick.lock` with the current head of the maintained
+`xgc2` branch and fails clearly when packaging is stale. A maintainer then
+reviews the source change, updates the lock, bumps the Debian revision, and lets
+the complete package matrix validate it before release.

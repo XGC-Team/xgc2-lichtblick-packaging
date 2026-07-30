@@ -48,10 +48,10 @@ done
 
 # shellcheck disable=SC1091
 source lichtblick.lock
-[[ "${LICHTBLICK_REPOSITORY}" == "https://github.com/lichtblick-suite/lichtblick.git" ]]
-[[ "${LICHTBLICK_REF}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[[ "${LICHTBLICK_REPOSITORY}" == "https://github.com/lxk36/xgc2-lichtblick.git" ]]
+[[ "${LICHTBLICK_REF}" == "xgc2" ]]
 [[ "${LICHTBLICK_SHA}" =~ ^[0-9a-f]{40}$ ]]
-[[ "${LICHTBLICK_VERSION}" == "${LICHTBLICK_REF#v}" ]]
+[[ "${LICHTBLICK_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 [[ "${LICHTBLICK_NODE_MAJOR}" =~ ^[0-9]+$ ]] && (( LICHTBLICK_NODE_MAJOR >= 20 ))
 [[ "${LICHTBLICK_NODE_VERSION}" == "${LICHTBLICK_NODE_MAJOR}."* ]]
 [[ "${LICHTBLICK_NODE_X64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
