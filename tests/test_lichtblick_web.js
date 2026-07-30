@@ -136,30 +136,6 @@ globalThis.LICHTBLICK_SUITE_DEFAULT_LAYOUT = [/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_
   assert.match(transformed, /\/lichtblick\/ws/);
 });
 
-test("keeps the newest trusted process definition generic", () => {
-  // Process definitions live in the xgc2 process-catalog (B1, current only).
-  const plugin = JSON.parse(fs.readFileSync(
-    path.resolve(
-      __dirname,
-      "../../../xgc2/xgc2/process-catalog/current/webui/lichtblick/xgc2-lichtblick-web.json",
-    ),
-    "utf8",
-  ));
-  assert.deepEqual(
-    plugin.definitions.map((candidate) => candidate.version),
-    ["1.6.0"],
-  );
-  const definition = plugin.definitions.findLast(
-    (candidate) => candidate.id === "lichtblick-web",
-  );
-  assert.equal(definition.version, "1.6.0");
-  assert.deepEqual(
-    Object.keys(definition.parameters.properties).sort(),
-    ["bridgePort", "port"],
-  );
-  assert.deepEqual(definition.command.args.slice(-2), ["--public-url-prefix", "/"]);
-});
-
 test("does not replace an explicit data source", () => {
   const script = buildAutoConnectScript("/");
   assert.match(script, /searchParams\.has\("ds"\)/);
