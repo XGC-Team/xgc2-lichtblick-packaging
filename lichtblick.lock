@@ -2,7 +2,7 @@
 # Immutable maintained source and toolchain inputs for the XGC2 Lichtblick package.
 LICHTBLICK_REPOSITORY=https://github.com/lxk36/xgc2-lichtblick.git
 LICHTBLICK_REF=xgc2
-LICHTBLICK_SHA=ea3a9e8a69e3e686947638f7919488ff9936275e
+LICHTBLICK_SHA=284dc70d77320dd5c986e6bd38ea98a720be1f47
 LICHTBLICK_VERSION=1.27.0
 LICHTBLICK_NODE_MAJOR=20
 LICHTBLICK_NODE_VERSION=20.19.5
