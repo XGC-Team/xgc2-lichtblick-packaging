@@ -134,22 +134,33 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      # amd64-only while GitHub-hosted arm runners are unreliable for this train.
-      # arm64 can be restored when the arm fleet is healthy again.
+      # fail-fast stays false so arm64 runner outages do not block amd64 publish.
       matrix:
         include:
           - distribution: focal
             ubuntu_version: "20.04"
             architecture: amd64
             runner: ubuntu-latest
+          - distribution: focal
+            ubuntu_version: "20.04"
+            architecture: arm64
+            runner: ubuntu-24.04-arm
           - distribution: jammy
             ubuntu_version: "22.04"
             architecture: amd64
             runner: ubuntu-latest
+          - distribution: jammy
+            ubuntu_version: "22.04"
+            architecture: arm64
+            runner: ubuntu-24.04-arm
           - distribution: noble
             ubuntu_version: "24.04"
             architecture: amd64
             runner: ubuntu-latest
+          - distribution: noble
+            ubuntu_version: "24.04"
+            architecture: arm64
+            runner: ubuntu-24.04-arm
     defaults:
       run:
         shell: bash
