@@ -26,13 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Validate repository and package metadata
-        run: |
-          set -euo pipefail
-          git diff --check HEAD
-          ./.xgc2/scripts/check_package_compliance.sh
-
   deb-build-and-smoke:
     name: deb-${{ matrix.distribution }}-${{ matrix.architecture }}
     runs-on: ${{ matrix.runner }}
@@ -71,6 +64,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+
+      - name: Validate repository and package metadata
+        run: |
+          set -euo pipefail
+          git diff --check HEAD
+          ./.xgc2/scripts/check_package_compliance.sh
+
 
       - name: Build, install, and smoke-test deb
         run: |
