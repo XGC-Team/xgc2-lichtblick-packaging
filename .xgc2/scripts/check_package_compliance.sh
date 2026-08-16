@@ -59,15 +59,29 @@ source lichtblick.lock
 [[ "${LICHTBLICK_NODE_MAJOR}" =~ ^[0-9]+$ ]] && (( LICHTBLICK_NODE_MAJOR >= 20 ))
 [[ "${LICHTBLICK_NODE_VERSION}" == "${LICHTBLICK_NODE_MAJOR}."* ]]
 [[ "${LICHTBLICK_YARN_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+[[ "${LICHTBLICK_FPM_RELEASE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 [[ "${LICHTBLICK_FPM_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[[ "${LICHTBLICK_FPM_RUBY_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[[ "${LICHTBLICK_FPM_AMD64_ARCHIVE}" == \
+  "fpm-${LICHTBLICK_FPM_VERSION}-ruby-${LICHTBLICK_FPM_RUBY_VERSION}-linux-amd64.7z" ]]
+[[ "${LICHTBLICK_FPM_ARM64_ARCHIVE}" == \
+  "fpm-${LICHTBLICK_FPM_VERSION}-ruby-${LICHTBLICK_FPM_RUBY_VERSION}-linux-arm64v8.7z" ]]
+[[ "${LICHTBLICK_FPM_AMD64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+[[ "${LICHTBLICK_FPM_ARM64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+[[ "${LICHTBLICK_FPM_RELEASE}" == 2.2.1 ]]
 [[ "${LICHTBLICK_FPM_VERSION}" == 1.17.0 ]]
+[[ "${LICHTBLICK_FPM_RUBY_VERSION}" == 3.4.3 ]]
 grep -Fq 'ghcr.io/xgc-team/xgc2-images/xgc2-build-${distribution}-dev:${LICHTBLICK_BUILD_IMAGE_TAG}' \
   .xgc2/scripts/build_deb_in_docker.sh
 grep -Fq 'export USE_SYSTEM_FPM=true' .xgc2/scripts/build_deb_in_docker.sh
 grep -Fq 'fpm --version' .xgc2/scripts/build_deb_in_docker.sh
-if grep -Eq 'apt-get -o Acquire::Retries=5 update|nodejs\.org/dist|electron-builder-binaries/releases/download' \
+grep -Fq 'electron-builder-binaries/releases/download' \
+  .xgc2/scripts/build_deb_in_docker.sh
+grep -Fq 'sha256sum --check --strict' .xgc2/scripts/build_deb_in_docker.sh
+grep -Fq 'bsdtar -xf' .xgc2/scripts/build_deb_in_docker.sh
+if grep -Eq 'apt-get -o Acquire::Retries=5 update|nodejs\.org/dist' \
     .xgc2/scripts/build_deb_in_docker.sh; then
-  echo "Lichtblick build must use the XGC2 image without dependency/toolchain bootstrap." >&2
+  echo "Lichtblick build must keep distro packages and Node in the XGC2 image." >&2
   exit 1
 fi
 

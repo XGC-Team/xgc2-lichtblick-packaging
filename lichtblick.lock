@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Immutable maintained source and XGC2 build-image inputs for the package.
+# Immutable maintained source, XGC2 build-image, and upstream packaging inputs.
 LICHTBLICK_REPOSITORY=https://github.com/lxk36/xgc2-lichtblick.git
 LICHTBLICK_REF=xgc2
 LICHTBLICK_SHA=284dc70d77320dd5c986e6bd38ea98a720be1f47
@@ -8,4 +8,12 @@ LICHTBLICK_BUILD_IMAGE_TAG=1.0.0
 LICHTBLICK_NODE_MAJOR=22
 LICHTBLICK_NODE_VERSION=22.16.0
 LICHTBLICK_YARN_VERSION=4.17.0
+# Official architecture-specific portable FPM assets from
+# electron-userland/electron-builder-binaries release fpm@2.2.1.
+LICHTBLICK_FPM_RELEASE=2.2.1
 LICHTBLICK_FPM_VERSION=1.17.0
+LICHTBLICK_FPM_RUBY_VERSION=3.4.3
+LICHTBLICK_FPM_AMD64_ARCHIVE=fpm-1.17.0-ruby-3.4.3-linux-amd64.7z
+LICHTBLICK_FPM_AMD64_SHA256=2ef73acbcbfd26503369cb3a9b0345aa7fae251d69130537ee6ff47b402f828e
+LICHTBLICK_FPM_ARM64_ARCHIVE=fpm-1.17.0-ruby-3.4.3-linux-arm64v8.7z
+LICHTBLICK_FPM_ARM64_SHA256=553f047eacbc63423bae1eca5958bcdc720c1f6f4135cb815f5ec99f48d3bd55

@@ -56,16 +56,18 @@ cannot download and replace itself with an upstream `lichtblick` package.
 
 A native amd64 or arm64 Docker host is required. The wrapper selects the
 versioned `xgc2-build-<distribution>-dev:1.0.0` image and verifies its Node,
-Yarn, and native FPM versions without installing distro packages or downloading
-a toolchain. The wrapper builds Lichtblick, installs the resulting local package
-on the same native architecture, runs the smoke test, and checks package removal
-before it copies a deb to the output directory.
+Yarn, and native packaging inputs without reinstalling the image toolchain. It
+downloads the architecture-specific FPM bundle locked by version and SHA-256 in
+`lichtblick.lock`; that upstream packaging helper remains local to this
+disposable build. The wrapper builds Lichtblick, installs the resulting local
+package on the same native architecture, runs the smoke test, and checks package
+removal before it copies a deb to the output directory.
 
 Lichtblick v1.27.0 uses electron-builder 26. Its app-builder supports the
-`USE_SYSTEM_FPM=true` compatibility switch used here to select the native FPM
-provided by the XGC2 build image. This coupling is intentional: if an upstream
+`USE_SYSTEM_FPM=true` compatibility switch used here to select the locked native
+FPM bundle. This coupling is intentional: if an upstream
 upgrade moves to electron-builder 27, migrate the pin to electron-builder's
-`toolsets.fpm` mechanism and revalidate the build image on both architectures
+`toolsets.fpm` mechanism and revalidate the bundle on both architectures
 before changing or removing the compatibility switch.
 
 ```bash
