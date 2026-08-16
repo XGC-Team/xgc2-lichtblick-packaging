@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 
-BUILD_SCHEMA = "xgc2.build-artifact.v2"
+BUILD_SCHEMA = "xgc2.build-artifact.v1"
 SUPPORTED_ARCHITECTURES = ("amd64", "arm64")
 DEB_FIELDS = ("file", "package", "version", "architecture", "sha256", "size")
 
