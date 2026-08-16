@@ -54,20 +54,19 @@ cannot download and replace itself with an upstream `lichtblick` package.
 
 ## Local build
 
-A native amd64 or arm64 Docker host is required. The wrapper selects pinned
-Node, Yarn, and architecture-matched portable FPM toolchains inside the target
-Ubuntu image. FPM archives and checksums are locked in `lichtblick.lock`, so
-electron-builder never falls back to its legacy x86-only FPM download on arm64.
-The wrapper builds Lichtblick, installs the resulting package on the same native
-architecture, runs the smoke test, and checks package removal before it copies a
-deb to the output directory.
+A native amd64 or arm64 Docker host is required. The wrapper selects the
+versioned `xgc2-build-<distribution>-dev:1.0.0` image and verifies its Node,
+Yarn, and native FPM versions without installing distro packages or downloading
+a toolchain. The wrapper builds Lichtblick, installs the resulting local package
+on the same native architecture, runs the smoke test, and checks package removal
+before it copies a deb to the output directory.
 
 Lichtblick v1.27.0 uses electron-builder 26. Its app-builder supports the
-`USE_SYSTEM_FPM=true` compatibility switch used here to select the pinned
-native bundle. This coupling is intentional: if an upstream upgrade moves to
-electron-builder 27, migrate the pin to electron-builder's `toolsets.fpm`
-mechanism and revalidate both architectures before changing or removing the
-compatibility switch.
+`USE_SYSTEM_FPM=true` compatibility switch used here to select the native FPM
+provided by the XGC2 build image. This coupling is intentional: if an upstream
+upgrade moves to electron-builder 27, migrate the pin to electron-builder's
+`toolsets.fpm` mechanism and revalidate the build image on both architectures
+before changing or removing the compatibility switch.
 
 ```bash
 ./.xgc2/scripts/check_package_compliance.sh

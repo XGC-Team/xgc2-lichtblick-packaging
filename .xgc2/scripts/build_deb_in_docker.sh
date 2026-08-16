@@ -4,6 +4,8 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
+# shellcheck disable=SC1090
+source "${repo_root}/lichtblick.lock"
 
 ubuntu_version="${UBUNTU_VERSION:-20.04}"
 architecture="${TARGET_ARCH:-$(dpkg --print-architecture)}"
@@ -55,7 +57,12 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-docker_image="${docker_image:-ubuntu:${ubuntu_version}}"
+approved_image="ghcr.io/xgc-team/xgc2-images/xgc2-build-${distribution}-dev:${LICHTBLICK_BUILD_IMAGE_TAG}"
+if [[ -n "${docker_image}" && "${docker_image}" != "${approved_image}" ]]; then
+  echo "--image must match the approved XGC2 build image: ${approved_image}" >&2
+  exit 1
+fi
+docker_image="${approved_image}"
 mkdir -p "${work_dir}" "${output_dir}"
 work_dir="$(cd "${work_dir}" && pwd -P)"
 output_dir="$(cd "${output_dir}" && pwd -P)"
@@ -102,81 +109,28 @@ docker run "${docker_run_args[@]}" \
   bash -lc '
     set -euo pipefail
 
-    apt-get -o Acquire::Retries=5 update
-    apt-get install -y --no-install-recommends \
-      build-essential \
-      ca-certificates \
-      curl \
-      dbus-x11 \
-      desktop-file-utils \
-      dpkg-dev \
-      fakeroot \
-      file \
-      git \
-      libarchive-tools \
-      python3 \
-      shared-mime-info \
-      xauth \
-      xvfb \
-      xz-utils
-
     # shellcheck disable=SC1091
     source /workspace/packaging/lichtblick.lock
-    case "${TARGET_ARCH}" in
-      amd64)
-        node_arch=x64
-        node_sha256="${LICHTBLICK_NODE_X64_SHA256}"
-        fpm_archive="${LICHTBLICK_FPM_AMD64_ARCHIVE}"
-        fpm_sha256="${LICHTBLICK_FPM_AMD64_SHA256}"
-        ;;
-      arm64)
-        node_arch=arm64
-        node_sha256="${LICHTBLICK_NODE_ARM64_SHA256}"
-        fpm_archive="${LICHTBLICK_FPM_ARM64_ARCHIVE}"
-        fpm_sha256="${LICHTBLICK_FPM_ARM64_SHA256}"
-        ;;
-    esac
-    node_archive="node-v${LICHTBLICK_NODE_VERSION}-linux-${node_arch}.tar.xz"
-    curl --fail --location --retry 5 --retry-connrefused --retry-delay 2 \
-      --output "/tmp/${node_archive}" \
-      "https://nodejs.org/dist/v${LICHTBLICK_NODE_VERSION}/${node_archive}"
-    printf "%s  %s\n" "${node_sha256}" "/tmp/${node_archive}" | sha256sum --check --strict
-    tar -xJf "/tmp/${node_archive}" -C /usr/local --strip-components=1
-    rm -f "/tmp/${node_archive}"
-
-    fpm_url="https://github.com/electron-userland/electron-builder-binaries/releases/download/fpm%40${LICHTBLICK_FPM_RELEASE}/${fpm_archive}"
-    curl --fail --location --retry 5 --retry-connrefused --retry-delay 2 \
-      --output "/tmp/${fpm_archive}" \
-      "${fpm_url}"
-    printf "%s  %s\n" "${fpm_sha256}" "/tmp/${fpm_archive}" \
-      | sha256sum --check --strict
-    install -d /opt/xgc2-fpm
-    bsdtar -xf "/tmp/${fpm_archive}" -C /opt/xgc2-fpm
-    rm -f "/tmp/${fpm_archive}"
-    test -x /opt/xgc2-fpm/fpm
-    test -x "/opt/xgc2-fpm/ruby-${LICHTBLICK_FPM_RUBY_VERSION}-portable/bin/ruby"
-    case "${TARGET_ARCH}" in
-      amd64)
-        file "/opt/xgc2-fpm/ruby-${LICHTBLICK_FPM_RUBY_VERSION}-portable/bin/ruby" \
-          | grep -Eq "x86-64|x86_64"
-        ;;
-      arm64)
-        file "/opt/xgc2-fpm/ruby-${LICHTBLICK_FPM_RUBY_VERSION}-portable/bin/ruby" \
-          | grep -Eq "aarch64|ARM aarch64"
-        ;;
-    esac
-    export PATH="/opt/xgc2-fpm:${PATH}"
+    for command in corepack dpkg-deb fakeroot file fpm git node python3 \
+      xvfb-run; do
+      if ! command -v "${command}" >/dev/null; then
+        echo "XGC2 build image is missing Lichtblick tool: ${command}" >&2
+        exit 1
+      fi
+    done
+    if [[ "$(node --version)" != "v${LICHTBLICK_NODE_VERSION}" ]]; then
+      echo "XGC2 build image Node mismatch: expected v${LICHTBLICK_NODE_VERSION}, found $(node --version)" >&2
+      exit 1
+    fi
     export USE_SYSTEM_FPM=true
-    if [[ "$(command -v fpm)" != /opt/xgc2-fpm/fpm ]]; then
-      echo "Pinned FPM is not first on PATH." >&2
-      exit 1
-    fi
     if [[ "$(fpm --version)" != "${LICHTBLICK_FPM_VERSION}" ]]; then
-      echo "Pinned FPM version mismatch." >&2
+      echo "XGC2 build image FPM mismatch: expected ${LICHTBLICK_FPM_VERSION}, found $(fpm --version)" >&2
       exit 1
     fi
-
-    corepack enable yarn
+    if [[ "$(corepack yarn --version)" != "${LICHTBLICK_YARN_VERSION}" ]]; then
+      echo "XGC2 build image Yarn mismatch: expected ${LICHTBLICK_YARN_VERSION}" >&2
+      exit 1
+    fi
 
     if [[ "$(dpkg --print-architecture)" != "${TARGET_ARCH}" ]]; then
       echo "Container architecture does not match ${TARGET_ARCH}." >&2

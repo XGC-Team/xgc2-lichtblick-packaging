@@ -29,6 +29,7 @@ required_files=(
   .xgc2/scripts/smoke_test_web_installed.sh
   .xgc2/scripts/xgc2_artifact_manifest.py
   .github/workflows/ci.yml
+  .github/workflows/ci-bootstrap-gate.yml
   .github/workflows/release.yml
   tests/test_artifact_manifest.py
   tests/test_lichtblick_web.js
@@ -40,6 +41,8 @@ required_files=(
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || { echo "Missing required file: ${file}" >&2; exit 1; }
 done
+grep -Fq 'XGC-Team/xgc2-images/.github/workflows/reusable-check-ci-bootstrap.yml@master' \
+  .github/workflows/ci-bootstrap-gate.yml
 
 for script in .xgc2/scripts/*.sh; do
   [[ -x "${script}" ]] || { echo "Script is not executable: ${script}" >&2; exit 1; }
@@ -52,26 +55,21 @@ source lichtblick.lock
 [[ "${LICHTBLICK_REF}" == "xgc2" ]]
 [[ "${LICHTBLICK_SHA}" =~ ^[0-9a-f]{40}$ ]]
 [[ "${LICHTBLICK_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[[ "${LICHTBLICK_BUILD_IMAGE_TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 [[ "${LICHTBLICK_NODE_MAJOR}" =~ ^[0-9]+$ ]] && (( LICHTBLICK_NODE_MAJOR >= 20 ))
 [[ "${LICHTBLICK_NODE_VERSION}" == "${LICHTBLICK_NODE_MAJOR}."* ]]
-[[ "${LICHTBLICK_NODE_X64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
-[[ "${LICHTBLICK_NODE_ARM64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
 [[ "${LICHTBLICK_YARN_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
-[[ "${LICHTBLICK_FPM_RELEASE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 [[ "${LICHTBLICK_FPM_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-[[ "${LICHTBLICK_FPM_RUBY_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-[[ "${LICHTBLICK_FPM_AMD64_ARCHIVE}" == \
-  "fpm-${LICHTBLICK_FPM_VERSION}-ruby-${LICHTBLICK_FPM_RUBY_VERSION}-linux-amd64.7z" ]]
-[[ "${LICHTBLICK_FPM_ARM64_ARCHIVE}" == \
-  "fpm-${LICHTBLICK_FPM_VERSION}-ruby-${LICHTBLICK_FPM_RUBY_VERSION}-linux-arm64v8.7z" ]]
-[[ "${LICHTBLICK_FPM_AMD64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
-[[ "${LICHTBLICK_FPM_ARM64_SHA256}" =~ ^[0-9a-f]{64}$ ]]
-[[ "${LICHTBLICK_FPM_RELEASE}" == 2.2.1 ]]
 [[ "${LICHTBLICK_FPM_VERSION}" == 1.17.0 ]]
-[[ "${LICHTBLICK_FPM_RUBY_VERSION}" == 3.4.3 ]]
+grep -Fq 'ghcr.io/xgc-team/xgc2-images/xgc2-build-${distribution}-dev:${LICHTBLICK_BUILD_IMAGE_TAG}' \
+  .xgc2/scripts/build_deb_in_docker.sh
 grep -Fq 'export USE_SYSTEM_FPM=true' .xgc2/scripts/build_deb_in_docker.sh
 grep -Fq 'fpm --version' .xgc2/scripts/build_deb_in_docker.sh
-grep -Fq 'bsdtar -xf' .xgc2/scripts/build_deb_in_docker.sh
+if grep -Eq 'apt-get -o Acquire::Retries=5 update|nodejs\.org/dist|electron-builder-binaries/releases/download' \
+    .xgc2/scripts/build_deb_in_docker.sh; then
+  echo "Lichtblick build must use the XGC2 image without dependency/toolchain bootstrap." >&2
+  exit 1
+fi
 
 # libasound2 is a virtual package on Noble. Keep both the replacement and
 # fallback relationship versioned so the unversioned OSS shim cannot satisfy
