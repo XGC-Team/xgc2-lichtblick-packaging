@@ -19,7 +19,7 @@ This repository owns:
 
 It intentionally does not commit a copy of the Lichtblick source tree, hold the
 APT signing key, or operate the APT server. It builds only from the XGC2-maintained
-[`lxk36/xgc2-lichtblick`](https://github.com/lxk36/xgc2-lichtblick) repository.
+[`XGC-Team/xgc2-lichtblick`](https://github.com/XGC-Team/xgc2-lichtblick) repository.
 Repository signing and index publication remain server-side operations. The
 mandatory ownership and upgrade rules are documented in
 [`MAINTENANCE.md`](MAINTENANCE.md).

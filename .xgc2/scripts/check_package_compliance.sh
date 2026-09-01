@@ -51,7 +51,7 @@ done
 
 # shellcheck disable=SC1091
 source lichtblick.lock
-[[ "${LICHTBLICK_REPOSITORY}" == "https://github.com/lxk36/xgc2-lichtblick.git" ]]
+[[ "${LICHTBLICK_REPOSITORY}" == "https://github.com/XGC-Team/xgc2-lichtblick.git" ]]
 [[ "${LICHTBLICK_REF}" == "xgc2" ]]
 [[ "${LICHTBLICK_SHA}" =~ ^[0-9a-f]{40}$ ]]
 [[ "${LICHTBLICK_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]

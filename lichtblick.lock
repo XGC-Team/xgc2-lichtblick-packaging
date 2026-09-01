@@ -1,8 +1,8 @@
 # shellcheck shell=bash
 # Immutable maintained source, XGC2 build-image, and upstream packaging inputs.
-LICHTBLICK_REPOSITORY=https://github.com/lxk36/xgc2-lichtblick.git
+LICHTBLICK_REPOSITORY=https://github.com/XGC-Team/xgc2-lichtblick.git
 LICHTBLICK_REF=xgc2
-LICHTBLICK_SHA=284dc70d77320dd5c986e6bd38ea98a720be1f47
+LICHTBLICK_SHA=44d63988e8fe4e03ba999b9ca891ff78bc8de775
 LICHTBLICK_VERSION=1.27.0
 LICHTBLICK_BUILD_IMAGE_TAG=1.0.0
 LICHTBLICK_NODE_MAJOR=22
