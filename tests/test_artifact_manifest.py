@@ -154,7 +154,7 @@ class ArtifactManifestTests(unittest.TestCase):
             "--ci-workflow",
             "CI",
             "--ci-workflow-ref",
-            "lxk36/xgc2-lichtblick-packaging/.github/workflows/ci.yml@refs/heads/main",
+            "XGC-Team/xgc2-lichtblick-packaging/.github/workflows/ci.yml@refs/heads/main",
         )
         manifest = artifact / f"{PRODUCT}_{DIST}_{architecture}.build.json"
         return debs, manifest
