@@ -2,7 +2,7 @@
 # Immutable maintained source, XGC2 build-image, and upstream packaging inputs.
 LICHTBLICK_REPOSITORY=https://github.com/XGC-Team/xgc2-lichtblick.git
 LICHTBLICK_REF=xgc2
-LICHTBLICK_SHA=e88abe7fb80bcd088e75ba29acc868178c7a0678
+LICHTBLICK_SHA=08f93f3107bea6734ee4cd48bc385f0f32f80e6d
 LICHTBLICK_VERSION=1.27.0
 LICHTBLICK_BUILD_IMAGE_TAG=1.0.0
 LICHTBLICK_NODE_MAJOR=22
