@@ -59,6 +59,7 @@ function parseArgs(argv) {
     publicUrlPrefix: null,
     allowedOrigins: [],
     frameAncestors: null,
+    assetUrlPrefix: null,
     showHelp: false,
   };
 
@@ -89,6 +90,9 @@ function parseArgs(argv) {
         break;
       case "--frame-ancestors":
         opts.frameAncestors = argv[++i];
+        break;
+      case "--asset-url-prefix":
+        opts.assetUrlPrefix = argv[++i];
         break;
       default:
         if (arg.startsWith("--")) {
@@ -123,6 +127,10 @@ function printHelp() {
       "  --frame-ancestors <sources>    CSP frame-ancestors source list.",
       "                                   Env: FRAME_ANCESTORS.",
       `                                   Default: ${DEFAULT_FRAME_ANCESTORS}`,
+      "  --asset-url-prefix <path>      Same-origin path that serves this build's",
+      "                                   content-hashed files independently of the",
+      "                                   per-instance page URL. Env: ASSET_URL_PREFIX.",
+      "                                   Default: unset (bundle loads next to the page).",
       "  -h, --help                     Show this help and exit.",
       "",
       "Environment variables override compiled-in defaults but are themselves",
@@ -427,12 +435,62 @@ function buildAutoConnectScript(prefix) {
   })();</script>`;
 }
 
-function transformIndexHtml(source, prefix) {
+function transformIndexHtml(source, prefix, assetUrlPrefix = null) {
   const autoConnect = buildAutoConnectScript(prefix);
   if (!source.includes("</head>")) {
     throw new Error("Lichtblick index.html has no closing head element");
   }
-  return source.replace("</head>", `${autoConnect}</head>`);
+  const connected = source.replace("</head>", `${autoConnect}</head>`);
+  return assetUrlPrefix == null ? connected : rewriteHashedScripts(connected, assetUrlPrefix);
+}
+
+/**
+ * A viewer page URL is scoped to its process instance, so without this every
+ * new instance fetched and compiled the identical bundle under a new URL.
+ * Only the address of an absolute, same-origin path is accepted: the scripts
+ * must stay behind the embedding origin and its proxy.
+ */
+function normalizeAssetUrlPrefix(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\/[A-Za-z0-9._~\-/]*$/.test(value) ||
+    value.startsWith("//") ||
+    value.split("/").some((segment) => segment === "." || segment === "..")
+  ) {
+    throw new Error(`invalid asset URL prefix: ${JSON.stringify(value)}`);
+  }
+  return value.endsWith("/") ? value : `${value}/`;
+}
+
+const SCRIPT_SRC = /(<script\b[^>]*?\bsrc=)(["'])([^"'<>]*)\2/g;
+
+/**
+ * Loads the content-hashed entry scripts from the stable asset prefix. The
+ * bundle's webpack publicPath is "auto", so chunks and workers follow the
+ * entry script. Only content-hashed names move: they are the same bytes for
+ * every instance of every build, so a shared path cannot serve a stale file.
+ */
+function rewriteHashedScripts(source, assetUrlPrefix) {
+  const assetPrefix = normalizeAssetUrlPrefix(assetUrlPrefix);
+  let rewritten = 0;
+  const result = source.replace(SCRIPT_SRC, (tag, head, quote, src) => {
+    const relative = src.replace(/^\.\//, "");
+    if (
+      /^[a-z][a-z0-9+.-]*:/i.test(relative) ||
+      relative.startsWith("/") ||
+      relative.split("/").includes("..") ||
+      !relative.endsWith(".js") ||
+      !CONTENT_HASHED_NAME.test(path.posix.basename(relative))
+    ) {
+      return tag;
+    }
+    rewritten += 1;
+    return `${head}${quote}${assetPrefix}${relative}${quote}`;
+  });
+  if (rewritten === 0) {
+    throw new Error("asset URL prefix is set but index.html loads no content-hashed script");
+  }
+  return result;
 }
 
 function loadBuildInfo() {
@@ -658,6 +716,7 @@ function main() {
     process.env.ALLOWED_ORIGINS ?? "",
     ...opts.allowedOrigins,
   ];
+  const assetUrlPrefix = opts.assetUrlPrefix ?? process.env.ASSET_URL_PREFIX ?? null;
   const frameAncestorsValue =
     opts.frameAncestors ??
     process.env.FRAME_ANCESTORS ??
@@ -682,7 +741,7 @@ function main() {
   let configuredOrigins;
   try {
     const indexSource = fs.readFileSync(path.join(STATIC_ROOT, "index.html"), "utf8");
-    transformedIndex = transformIndexHtml(indexSource, prefix);
+    transformedIndex = transformIndexHtml(indexSource, prefix, assetUrlPrefix || null);
     buildInfo = loadBuildInfo();
     validatedFrameAncestors = validateFrameAncestors(frameAncestorsValue);
     configuredOrigins = parseConfiguredOrigins(configuredOriginValues);
@@ -774,6 +833,7 @@ module.exports = {
   defaultListenerOrigins,
   endpointMatches,
   loadBuildInfo,
+  normalizeAssetUrlPrefix,
   notModifiedSince,
   normalizeOrigin,
   parseWsUrl,
