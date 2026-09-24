@@ -16,6 +16,7 @@ const {
   buildAutoConnectScript,
   defaultListenerOrigins,
   endpointMatches,
+  normalizeAssetUrlPrefix,
   normalizeOrigin,
   notModifiedSince,
   parseArgs,
@@ -47,6 +48,7 @@ test("parses the browser server command line", () => {
       publicUrlPrefix: "/lichtblick",
       allowedOrigins: ["https://xgc.example", "http://127.0.0.1:5173"],
       frameAncestors: "'self' https://xgc.example",
+      assetUrlPrefix: null,
       showHelp: false,
     },
   );
@@ -131,6 +133,43 @@ globalThis.LICHTBLICK_SUITE_DEFAULT_LAYOUT = [/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_
   assert.match(transformed, /LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER/);
   assert.match(transformed, /foxglove-websocket/);
   assert.match(transformed, /\/lichtblick\/ws/);
+});
+
+test("loads content-hashed entry scripts from a stable asset prefix only when asked", () => {
+  const index =
+    "<!doctype html><html><head>" +
+    '<link rel="icon" href="favicon-32x32.png" />' +
+    '<script defer="defer" src="main.3f1c2a9b8d7e6f5a4b3c.js"></script>' +
+    '<script defer src="./vendor.0a1b2c3d4e5f60718293.js"></script>' +
+    '<script src="https://cdn.example/x.0a1b2c3d4e5f60718293.js"></script>' +
+    '<script src="plain.js"></script>' +
+    "</head><body></body></html>";
+  assert.equal(transformIndexHtml(index, "/"), transformIndexHtml(index, "/", null));
+  assert.doesNotMatch(transformIndexHtml(index, "/"), /lichtblick-assets/);
+
+  const staged = transformIndexHtml(index, "/", "/api/visualization/lichtblick-assets");
+  assert.match(staged, /src="\/api\/visualization\/lichtblick-assets\/main\.3f1c2a9b8d7e6f5a4b3c\.js"/);
+  assert.match(staged, /src="\/api\/visualization\/lichtblick-assets\/vendor\.0a1b2c3d4e5f60718293\.js"/);
+  assert.match(staged, /src="https:\/\/cdn\.example\/x\.0a1b2c3d4e5f60718293\.js"/);
+  assert.match(staged, /src="plain\.js"/);
+  assert.match(staged, /href="favicon-32x32\.png"/);
+  assert.match(staged, /foxglove-websocket/);
+
+  assert.throws(
+    () => transformIndexHtml('<head><script src="plain.js"></script></head>', "/", "/assets/"),
+    /no content-hashed script/,
+  );
+});
+
+test("accepts only same-origin absolute asset prefixes", () => {
+  assert.equal(normalizeAssetUrlPrefix("/assets"), "/assets/");
+  assert.equal(normalizeAssetUrlPrefix("/a/b-c_d.e/"), "/a/b-c_d.e/");
+  for (const value of [
+    "assets", "//evil.example/", "https://evil.example/", "/a/../b", "/a/./b",
+    "/a b", "/a?x", "/a#x", '/a"', "",
+  ]) {
+    assert.throws(() => normalizeAssetUrlPrefix(value), /invalid asset URL prefix/, value);
+  }
 });
 
 test("does not replace an explicit data source", () => {
