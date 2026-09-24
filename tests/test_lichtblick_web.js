@@ -17,11 +17,13 @@ const {
   defaultListenerOrigins,
   endpointMatches,
   normalizeOrigin,
+  notModifiedSince,
   parseArgs,
   parseConfiguredOrigins,
   parseWsUrl,
   safeJoin,
   securityHeaders,
+  staticCacheControl,
   transformIndexHtml,
   validateFrameAncestors,
   websocketOriginAllowed,
@@ -137,6 +139,27 @@ test("does not replace an explicit data source", () => {
   assert.match(script, /history\.replaceState/);
 });
 
+test("caches content-hashed bundles for good and revalidates everything else", () => {
+  const immutable = "public, max-age=31536000, immutable";
+  assert.equal(staticCacheControl("/web/main.3f1c2a9b8d7e6f5a4b3c.js"), immutable);
+  assert.equal(staticCacheControl("/web/412.3f1c2a9b8d7e6f5a4b3c.js"), immutable);
+  assert.equal(staticCacheControl("/web/main.3f1c2a9b8d7e6f5a4b3c.js.map"), immutable);
+  assert.equal(staticCacheControl("/web/Worker.worker.3f1c2a9b8d7e6f5a4b3c.js"), immutable);
+  assert.equal(staticCacheControl("/web/3f1c2a9b8d7e6f5a4b3c.glb"), immutable);
+  assert.equal(staticCacheControl("/web/favicon.ico"), "no-cache");
+  assert.equal(staticCacheControl("/web/main.js"), "no-cache");
+  assert.equal(staticCacheControl("/web/index.html"), "no-cache");
+  assert.equal(staticCacheControl("/web/3f1c2a9b8d7e6f5a4b3c.html"), "no-cache");
+});
+
+test("answers conditional requests at HTTP date precision", () => {
+  const mtime = new Date("2026-09-24T10:00:00.750Z");
+  assert.equal(notModifiedSince(mtime.toUTCString(), mtime), true);
+  assert.equal(notModifiedSince("Thu, 24 Sep 2026 09:59:59 GMT", mtime), false);
+  assert.equal(notModifiedSince("not a date", mtime), false);
+  assert.equal(notModifiedSince(undefined, mtime), false);
+});
+
 test("serves installed metadata without an XGC layout and enforces WebSocket Origin", async (t) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "xgc2-lichtblick-test-"));
   const webRoot = path.join(temporary, "web");
@@ -156,6 +179,8 @@ test("serves installed metadata without an XGC layout and enforces WebSocket Ori
     upstreamSha: "1".repeat(40),
   };
   fs.writeFileSync(buildInfoFile, JSON.stringify(buildInfo));
+  fs.writeFileSync(path.join(webRoot, "main.3f1c2a9b8d7e6f5a4b3c.js"), "console.log(1);");
+  fs.writeFileSync(path.join(webRoot, "favicon.ico"), "icon");
 
   const upstream = net.createServer((socket) => {
     let request = "";
@@ -221,6 +246,17 @@ test("serves installed metadata without an XGC layout and enforces WebSocket Ori
   assert.match(index.body, /LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER/);
   assert.match(index.body, /foxglove-websocket/);
 
+  const bundle = await getText(port, "/main.3f1c2a9b8d7e6f5a4b3c.js");
+  assert.equal(bundle.statusCode, 200);
+  assert.equal(bundle.headers["cache-control"], "public, max-age=31536000, immutable");
+  const favicon = await getText(port, "/favicon.ico");
+  assert.equal(favicon.headers["cache-control"], "no-cache");
+  const revalidated = await getText(port, "/favicon.ico", {
+    "If-Modified-Since": favicon.headers["last-modified"],
+  });
+  assert.equal(revalidated.statusCode, 304);
+  assert.equal(revalidated.body, "");
+
   assert.match(await websocketUpgradeStatus(port, "https://evil.example"), /^HTTP\/1\.1 403/);
   assert.match(await websocketUpgradeStatus(port, `http://127.0.0.1:${port}`), /^HTTP\/1\.1 101/);
   assert.match(await websocketUpgradeStatus(port, "http://127.0.0.1:5173"), /^HTTP\/1\.1 101/);
@@ -283,9 +319,9 @@ function getJson(port, requestPath) {
   });
 }
 
-function getText(port, requestPath) {
+function getText(port, requestPath, headers = {}) {
   return new Promise((resolve, reject) => {
-    http.get({ host: "127.0.0.1", port, path: requestPath }, (response) => {
+    http.get({ host: "127.0.0.1", port, path: requestPath, headers }, (response) => {
       let body = "";
       response.setEncoding("utf8");
       response.on("data", (chunk) => { body += chunk; });
