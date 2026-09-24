@@ -470,6 +470,28 @@ function serveIndex(res, transformedIndex, responseSecurityHeaders) {
   res.end(body);
 }
 
+// Webpack names bundles, chunks, workers and emitted assets by content hash
+// (`main.<hash>.js`, `<hash>.png`), so their bytes never change under a name
+// and can be cached for good. Anything else (HTML, copied favicons) must be
+// revalidated so an upgraded package is never served stale; Last-Modified
+// lets that revalidation answer 304 instead of resending the file.
+const CONTENT_HASHED_NAME = /(?:^|\.)[0-9a-f]{16,}(?:\.|$)/;
+
+function staticCacheControl(filePath) {
+  const name = path.basename(filePath);
+  if (path.extname(name).toLowerCase() !== ".html" && CONTENT_HASHED_NAME.test(name)) {
+    return "public, max-age=31536000, immutable";
+  }
+  return "no-cache";
+}
+
+function notModifiedSince(ifModifiedSince, mtime) {
+  if (typeof ifModifiedSince !== "string") return false;
+  const since = Date.parse(ifModifiedSince);
+  // HTTP dates have whole-second precision.
+  return Number.isFinite(since) && Math.floor(mtime.getTime() / 1000) * 1000 <= since;
+}
+
 function serveStatic(req, res, prefix, transformedIndex, responseSecurityHeaders) {
   const urlPath = req.url.split("?", 1)[0];
   let stripped = urlPath;
@@ -519,10 +541,20 @@ function serveStatic(req, res, prefix, transformedIndex, responseSecurityHeaders
     }
     const ext = path.extname(target).toLowerCase();
     const mime = MIME[ext] ?? "application/octet-stream";
+    const lastModified = stats.mtime.toUTCString();
+    const cacheHeaders = {
+      "Cache-Control": staticCacheControl(target),
+      "Last-Modified": lastModified,
+    };
+    if (notModifiedSince(req.headers["if-modified-since"], stats.mtime)) {
+      res.writeHead(304, { ...cacheHeaders, ...responseSecurityHeaders });
+      res.end();
+      return;
+    }
     res.writeHead(200, {
       "Content-Type": mime,
       "Content-Length": stats.size,
-      "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=3600",
+      ...cacheHeaders,
       ...responseSecurityHeaders,
     });
     fs.createReadStream(target).pipe(res);
@@ -742,12 +774,14 @@ module.exports = {
   defaultListenerOrigins,
   endpointMatches,
   loadBuildInfo,
+  notModifiedSince,
   normalizeOrigin,
   parseWsUrl,
   parseArgs,
   parseConfiguredOrigins,
   safeJoin,
   securityHeaders,
+  staticCacheControl,
   transformIndexHtml,
   validateFrameAncestors,
   websocketOriginAllowed,
